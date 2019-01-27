@@ -8,7 +8,7 @@ import gzip
 class LogParserTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.tests_path = os.path.dirname(os.path.abspath(__file__)) + "\\test"
+        self.tests_path = os.path.dirname(os.path.abspath(__file__))
         self.config = {
             "REPORT_SIZE": 500,
             "REPORT_DIR": self.tests_path + "\\reports",

@@ -11,8 +11,8 @@ class LogParserTestCase(unittest.TestCase):
         self.tests_path = os.path.dirname(os.path.abspath(__file__)) + "\\test"
         self.config = {
             "REPORT_SIZE": 500,
-            "REPORT_DIR": self.tests_path + "\\reports",
-            "LOG_DIR": self.tests_path + "\\log",
+            "REPORT_DIR": self.tests_path,
+            "LOG_DIR": self.tests_path,
             "ERROR_LIMIT": 0.6
         }
 

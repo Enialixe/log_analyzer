@@ -1,0 +1,7 @@
+{
+    "REPORT_SIZE": 1000,
+    "REPORT_DIR": "D:\\log_parser\\reports",
+    "LOG_DIR": "D:\\log_parser\\log",
+	"SCRIPT_LOGGING_PATH": "D:\\log_parser\\parce_log.log"
+	"ERROR_LIMIT": 0.5
+}

@@ -1,5 +1,6 @@
 import unittest
-from log_analyzer import load_conf, find_last_log, median, parse_log_lines, read_log, make_report
+from log_analyzer import load_conf, find_last_log, median, parse_log_lines, read_log, stat_calc, \
+    find_report_path
 import json
 import os
 import gzip
@@ -27,21 +28,25 @@ class LogParserTestCase(unittest.TestCase):
         test_log_path_1 = self.config["LOG_DIR"] + '\\nginx-access-ui.log-20170630.gz'
         test_log_path_2 = self.config["LOG_DIR"] + '\\nginx-access-ui.log-20180630'
         test_log_path_3 = self.config["LOG_DIR"] + '\\nginx-access-ui.log-20180630.bz2'
-        test_result_path_1 = self.config["REPORT_DIR"] + '\\report-2017.06.30.html'
-        test_result_path_2 = self.config["REPORT_DIR"] + '\\report-2018.06.30.html'
         f1 = open(test_log_path_1, 'w')
         f2 = open(test_log_path_2, 'w')
         f3 = open(test_log_path_3, 'w')
         f1.close()
         f2.close()
         f3.close()
-        self.assertEqual(find_last_log(self.config["LOG_DIR"], self.config["REPORT_DIR"]),
-                         (test_log_path_2, test_result_path_2))
+        self.assertEqual(find_last_log(self.config["LOG_DIR"]),
+                         test_log_path_2)
         os.remove(test_log_path_2)
-        self.assertEqual(find_last_log(self.config["LOG_DIR"], self.config["REPORT_DIR"]),
-                         (test_log_path_1, test_result_path_1))
+        self.assertEqual(find_last_log(self.config["LOG_DIR"]),
+                         test_log_path_1)
         os.remove(test_log_path_1)
         os.remove(test_log_path_3)
+
+    def test_find_report_path(self):
+        test_log_path_1 = self.config["LOG_DIR"] + '\\nginx-access-ui.log-20170630.gz'
+        test_result_path_1 = self.config["REPORT_DIR"] + '\\report-2017.06.30.html'
+        self.assertEqual(find_report_path(self.config["LOG_DIR"], self.config["REPORT_DIR"],
+                                          test_log_path_1), test_result_path_1)
 
     def test_median(self):
         test_list = [1, 5, 4, 3, 6]
@@ -105,7 +110,7 @@ class LogParserTestCase(unittest.TestCase):
              'time_avg': 0.072,
              'time_med': 0.072,
              'count_perc': 0.3333333333333333}]
-        self.assertEqual(make_report(read_log(test_log_path), 3), result_table)
+        self.assertEqual(stat_calc(read_log(test_log_path), 3), result_table)
 
 
 if __name__ == "__main__":

@@ -49,7 +49,8 @@ def find_last_log(log_dir):
     logging.info('Finding last log')
 
     files = sorted([file for file in os.listdir(log_dir)
-                    if LOG_FORMAT.match(file)], key=lambda x: LOG_FORMAT.search(x).group('date'),
+                    if LOG_FORMAT.match(file)],
+                   key=lambda x: LOG_FORMAT.search(x).group('date'),
                    reverse=True)
     if len(files) > 0:
         logging.debug(files[0])
@@ -63,13 +64,18 @@ def find_last_log(log_dir):
         logging.debug('No correct log in directory')
         return None
 
-def find_report_path(log_dir,report_dir, log_path):
-    lastdate=datetime.strptime(LOG_FORMAT.search(os.path.relpath(log_path, log_dir)).group('date'), '%Y%m%d')
-    report_path = os.path.join(report_dir, "report-"+ lastdate.strftime('%Y.%m.%d') + '.html')
+
+def find_report_path(log_dir, report_dir, log_path):
+    lastdate = datetime.strptime(
+        LOG_FORMAT.search(os.path.relpath(log_path, log_dir)).group('date'),
+        '%Y%m%d')
+    report_path = os.path.join(report_dir, "report-" +
+                               lastdate.strftime('%Y.%m.%d') + '.html')
     if os.path.isfile(report_path):
         logging.debug('Result is up to date')
         return None
     return report_path
+
 
 def read_log(log_path, error_limit=None):
     logging.info('Reading and parsing log')
@@ -91,7 +97,7 @@ def read_log(log_path, error_limit=None):
 
 def parse_log_lines(log_line):
     if LOG_STR.match(log_line):
-        searched=LOG_STR.search(log_line)
+        searched = LOG_STR.search(log_line)
         url = searched.group('url')
         url = url.split(' ')[1]
         req_time = float(searched.group('time'))
@@ -137,7 +143,7 @@ def stat_calc(log_generator, report_size):
 
 def write_report(report_path, report):
     logging.info('Writing report to ' + report_path)
-    with open(os.path.join(SCRIPT_PATH,'report.html'), 'rb') as f:
+    with open(os.path.join(SCRIPT_PATH, 'report.html'), 'rb') as f:
         template = Template(f.read().decode('utf-8'))
     template = template.safe_substitute(table_json=report)
     with open(report_path, 'wb') as f:
@@ -147,7 +153,8 @@ def write_report(report_path, report):
 def main(config):
     last_log = find_last_log(config.get('LOG_DIR'))
     if last_log:
-        report_path = find_report_path(config.get('LOG_DIR'), config.get('REPORT_DIR'),
+        report_path = find_report_path(config.get('LOG_DIR'),
+                                       config.get('REPORT_DIR'),
                                        last_log)
         if report_path:
             log_lines = read_log(last_log, config.get['ERROR_LIMIT'])
@@ -157,7 +164,6 @@ def main(config):
 
 
 if __name__ == "__main__":
-    '''
     commandline_parser = argparse.ArgumentParser()
     commandline_parser.add_argument('--config', default=DEFAULT_CONFIG_PATH)
     args = commandline_parser.parse_args()
@@ -169,4 +175,3 @@ if __name__ == "__main__":
         main(config)
     except Exception as E:
         logging.exception(E)
-    '''

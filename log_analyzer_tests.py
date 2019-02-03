@@ -1,6 +1,6 @@
 import unittest
-from log_analyzer import load_conf, find_last_log, median, parse_log_lines, read_log, stat_calc, \
-    find_report_path
+from log_analyzer import load_conf, find_last_log, median, \
+    parse_log_lines, read_log, stat_calc, find_report_path
 import json
 import os
 import gzip
@@ -18,16 +18,21 @@ class LogParserTestCase(unittest.TestCase):
         }
 
     def test_load_config(self):
-        with open(self.tests_path + '\\test_conf.json', 'w', encoding='utf-8') as f:
+        with open(self.tests_path + '\\test_conf.json', 'w',
+                  encoding='utf-8') as f:
             json.dump(self.config, f, ensure_ascii=False)
-        self.assertEqual(load_conf(self.tests_path + '\\test_conf.json'), self.config)
+        self.assertEqual(load_conf(self.tests_path +
+                                   '\\test_conf.json'), self.config)
         os.remove(self.tests_path + '\\test_conf.json')
         self.assertEqual(load_conf(self.tests_path + '\\test_conf.json'), None)
 
     def test_find_last_log(self):
-        test_log_path_1 = self.config["LOG_DIR"] + '\\nginx-access-ui.log-20170630.gz'
-        test_log_path_2 = self.config["LOG_DIR"] + '\\nginx-access-ui.log-20180630'
-        test_log_path_3 = self.config["LOG_DIR"] + '\\nginx-access-ui.log-20180630.bz2'
+        test_log_path_1 = self.config["LOG_DIR"] + \
+                          '\\nginx-access-ui.log-20170630.gz'
+        test_log_path_2 = self.config["LOG_DIR"] + \
+                        '\\nginx-access-ui.log-20180630'
+        test_log_path_3 = self.config["LOG_DIR"] + \
+                          '\\nginx-access-ui.log-20180630.bz2'
         f1 = open(test_log_path_1, 'w')
         f2 = open(test_log_path_2, 'w')
         f3 = open(test_log_path_3, 'w')
@@ -43,8 +48,10 @@ class LogParserTestCase(unittest.TestCase):
         os.remove(test_log_path_3)
 
     def test_find_report_path(self):
-        test_log_path_1 = self.config["LOG_DIR"] + '\\nginx-access-ui.log-20170630.gz'
-        test_result_path_1 = self.config["REPORT_DIR"] + '\\report-2017.06.30.html'
+        test_log_path_1 = self.config["LOG_DIR"] + \
+                          '\\nginx-access-ui.log-20170630.gz'
+        test_result_path_1 = self.config["REPORT_DIR"] +\
+                             '\\report-2017.06.30.html'
         self.assertEqual(find_report_path(self.config["LOG_DIR"], self.config["REPORT_DIR"],
                                           test_log_path_1), test_result_path_1)
 

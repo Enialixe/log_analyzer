@@ -16,6 +16,7 @@ import logging
 import argparse
 from datetime import datetime
 from string import Template
+from operator import itemgetter
 
 SCRIPT_PATH = os.path.dirname(os.path.abspath(__file__))
 LOG_STR = re.compile('^([\d.]+)\s.+\s([\d.-]+)\s\[([^\]]+)\]\s"(?P<url>[^"]+)"'
@@ -26,8 +27,8 @@ DEFAULT_CONFIG_PATH = os.path.join(SCRIPT_PATH, 'config.json')
 
 config = {
     "REPORT_SIZE": 1000,
-    "REPORT_DIR": SCRIPT_PATH + "\\reports",
-    "LOG_DIR": SCRIPT_PATH + "\\log"
+    "REPORT_DIR": os.path.join(SCRIPT_PATH, "reports"),
+    "LOG_DIR": os.path.join(SCRIPT_PATH, "log")
 }
 
 
@@ -46,39 +47,28 @@ def init_logger(log_path):
 
 
 def find_last_log(log_dir):
-    logging.info('Finding last log')
-
-    files = sorted([file for file in os.listdir(log_dir)
-                    if LOG_FORMAT.match(file)],
-                   key=lambda x: LOG_FORMAT.search(x).group('date'),
-                   reverse=True)
-    if len(files) > 0:
-        logging.debug(files[0])
-        lastdate = datetime.strptime(
-                LOG_FORMAT.search(files[0]).group('date'), '%Y%m%d')
-        logging.debug(lastdate)
-        log_path = os.path.join(log_dir, files[0])
-        logging.debug(lastdate)
-        return log_path
-    else:
-        logging.debug('No correct log in directory')
-        return None
+    lastdate = 0
+    log_file = ''
+    for file in os.listdir(log_dir):
+        if LOG_FORMAT.match(file) and int(LOG_FORMAT.search(file).group('date')) > lastdate:
+                lastdate = int(LOG_FORMAT.search(file).group('date'))
+                log_file = file
+    if lastdate:
+        logging.debug(log_file)
+        lastdate = datetime.strptime(str(lastdate), '%Y%m%d')
+        logging.debug(lastdate.strftime('%Y.%m.%d'))
+        log_path = os.path.join(log_dir, log_file)
+        return log_path, lastdate
 
 
-def find_report_path(log_dir, report_dir, log_path):
-    lastdate = datetime.strptime(
-        LOG_FORMAT.search(os.path.relpath(log_path, log_dir)).group('date'),
-        '%Y%m%d')
+def find_report_path(report_dir, lastdate):
     report_path = os.path.join(report_dir, "report-" +
                                lastdate.strftime('%Y.%m.%d') + '.html')
-    if os.path.isfile(report_path):
-        logging.debug('Result is up to date')
-        return None
-    return report_path
+    if not os.path.isfile(report_path):
+        return report_path
 
 
 def read_log(log_path, error_limit=None):
-    logging.info('Reading and parsing log')
     open_log = gzip.open if log_path.endswith('.gz') else io.open
     with open_log(log_path, "rb") as f:
         log_line_count = 0
@@ -112,12 +102,11 @@ def median(lst):
 
 
 def stat_calc(log_generator, report_size):
-    logging.info('Making report table')
     table = []
     total_urls = 0
-    for key, group in itertools.groupby(sorted(log_generator,
-                                               key=lambda x: x[0]),
-                                        lambda x: x[0]):
+    sorted_log = sorted(log_generator, key=itemgetter(0))
+    for key, group in itertools.groupby(sorted_log,
+                                        itemgetter(0)):
         group_list = list(group)
         table_element = {
             'url': key,
@@ -141,9 +130,8 @@ def stat_calc(log_generator, report_size):
                   reverse=True)[:report_size]
 
 
-def write_report(report_path, report):
-    logging.info('Writing report to ' + report_path)
-    with open(os.path.join(SCRIPT_PATH, 'report.html'), 'rb') as f:
+def write_report(report_path, report, template_path):
+    with open(template_path, 'rb') as f:
         template = Template(f.read().decode('utf-8'))
     template = template.safe_substitute(table_json=report)
     with open(report_path, 'wb') as f:
@@ -151,16 +139,26 @@ def write_report(report_path, report):
 
 
 def main(config):
-    last_log = find_last_log(config.get('LOG_DIR'))
+    logging.info('Finding last log')
+    last_log, lastdate = find_last_log(config.get('LOG_DIR'))
     if last_log:
-        report_path = find_report_path(config.get('LOG_DIR'),
-                                       config.get('REPORT_DIR'),
-                                       last_log)
+        report_path = find_report_path(config.get('REPORT_DIR'),
+                                       lastdate)
         if report_path:
+            logging.info('Reading and parsing log')
             log_lines = read_log(last_log, config.get['ERROR_LIMIT'])
+            logging.info('Making report table')
             res_table = stat_calc(log_lines, config.get('REPORT_SIZE'))
-            write_report(report_path, res_table)
+            logging.info('Writing report to ' + report_path)
+            if config.get('TEMPLATE_PATH'):
+                write_report(report_path, res_table, config['TEMPLATE_PATH'])
+            else:
+                write_report(report_path, res_table, os.path.join(SCRIPT_PATH, 'report.html'))
             logging.info('Parsing complete successfully')
+        else:
+            logging.debug('Results is up to date')
+    else:
+        logging.debug('No correct log in direcotry')
 
 
 if __name__ == "__main__":

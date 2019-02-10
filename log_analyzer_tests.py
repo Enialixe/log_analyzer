@@ -4,7 +4,7 @@ from log_analyzer import load_conf, find_last_log, median, \
 import json
 import os
 import gzip
-
+import datetime
 
 class LogParserTestCase(unittest.TestCase):
 
@@ -40,20 +40,18 @@ class LogParserTestCase(unittest.TestCase):
         f2.close()
         f3.close()
         self.assertEqual(find_last_log(self.config["LOG_DIR"]),
-                         test_log_path_2)
+                         (test_log_path_2, datetime.datetime(2018, 6, 30, 0, 0)))
         os.remove(test_log_path_2)
         self.assertEqual(find_last_log(self.config["LOG_DIR"]),
-                         test_log_path_1)
+                         (test_log_path_1, datetime.datetime(2017, 6, 30, 0, 0)))
         os.remove(test_log_path_1)
         os.remove(test_log_path_3)
 
     def test_find_report_path(self):
-        test_log_path_1 = self.config["LOG_DIR"] + \
-                          '\\nginx-access-ui.log-20170630.gz'
         test_result_path_1 = self.config["REPORT_DIR"] +\
                              '\\report-2017.06.30.html'
-        self.assertEqual(find_report_path(self.config["LOG_DIR"], self.config["REPORT_DIR"],
-                                          test_log_path_1), test_result_path_1)
+        self.assertEqual(find_report_path(self.config["REPORT_DIR"],
+                                          datetime.datetime(2017, 6, 30, 0, 0)), test_result_path_1)
 
     def test_median(self):
         test_list = [1, 5, 4, 3, 6]

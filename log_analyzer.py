@@ -22,7 +22,7 @@ SCRIPT_PATH = os.path.dirname(os.path.abspath(__file__))
 LOG_STR = re.compile('^([\d.]+)\s.+\s([\d.-]+)\s\[([^\]]+)\]\s"(?P<url>[^"]+)"'
                      '\s[1-5]\d\d\s\d+\s".+"\s"([^"]+)"\s(".+")\s(".+")'
                      '\s(".+")\s(?P<time>[\d.]+)$')
-LOG_FORMAT = re.compile('^(nginx-access-ui\.log-)(?P<date>\d{8})(\.gz)?$')
+LOG_FORMAT = re.compile('^nginx-access-ui\.log-(?P<date>\d{8})(\.gz)?$')
 DEFAULT_CONFIG_PATH = os.path.join(SCRIPT_PATH, 'config.json')
 
 config = {
@@ -47,18 +47,21 @@ def init_logger(log_path):
 
 
 def find_last_log(log_dir):
-    lastdate = 0
-    log_file = ''
-    for file in os.listdir(log_dir):
-        if LOG_FORMAT.match(file) and int(LOG_FORMAT.search(file).group('date')) > lastdate:
-                lastdate = int(LOG_FORMAT.search(file).group('date'))
-                log_file = file
-    if lastdate:
-        logging.debug(log_file)
-        lastdate = datetime.strptime(str(lastdate), '%Y%m%d')
-        logging.debug(lastdate.strftime('%Y.%m.%d'))
-        log_path = os.path.join(log_dir, log_file)
-        return log_path, lastdate
+    last_date = None
+    last_log = None
+    for entry in os.listdir(log_dir):
+        match = LOG_FORMAT.match(entry)
+        if match:
+            date, ext = match.groups()
+            try:
+                date_dt = datetime.strptime(str(date), '%Y%m%d').date()
+            except ValueError as exc:
+                logging.debug(f"Incorrect date format for {entry}")
+                continue
+            if not last_date or date_dt>last_date:
+                last_date = date_dt
+                last_log = os.path.join(log_dir, entry)
+    return last_log, last_date
 
 
 def find_report_path(report_dir, lastdate):
@@ -102,31 +105,31 @@ def median(lst):
 
 
 def stat_calc(log_generator, report_size):
-    table = []
+    stat_table = []
     total_urls = 0
     sorted_log = sorted(log_generator, key=itemgetter(0))
-    for key, group in itertools.groupby(sorted_log,
+    for url, requests in itertools.groupby(sorted_log,
                                         itemgetter(0)):
-        group_list = list(group)
-        table_element = {
-            'url': key,
-            'count': len(group_list),
+        requests = list(requests)
+        url_statistics = {
+            'url': url,
+            'count': len(requests),
             'time_sum': 0,
             'time_max': 0
         }
         time_list = []
-        for element in group_list:
-            table_element['time_sum'] = table_element['time_sum'] + element[1]
-            time_list.append(element[1])
-            if element[1] > table_element['time_max']:
-                table_element['time_max'] = element[1]
-        table_element['time_avg'] = table_element['time_sum'] / len(time_list)
-        table_element['time_med'] = median(time_list)
-        table.append(table_element)
-        total_urls = total_urls + len(group_list)
-    for table_element in table:
-        table_element['count_perc'] = table_element['count'] / total_urls
-    return sorted(table, key=lambda x: x['time_sum'],
+        for _, req_time in requests:
+            url_statistics['time_sum'] = url_statistics['time_sum'] + req_time
+            time_list.append(req_time)
+            if req_time > url_statistics['time_max']:
+                url_statistics['time_max'] = req_time
+        url_statistics['time_avg'] = url_statistics['time_sum'] / len(time_list)
+        url_statistics['time_med'] = median(time_list)
+        total_urls = total_urls + url_statistics['count']
+        stat_table.append(url_statistics)
+    for url_statistics in stat_table:
+        url_statistics['count_perc'] = url_statistics['count'] / total_urls
+    return sorted(stat_table, key=itemgetter('time_sum'),
                   reverse=True)[:report_size]
 
 
@@ -140,25 +143,24 @@ def write_report(report_path, report, template_path):
 
 def main(config):
     logging.info('Finding last log')
-    last_log, lastdate = find_last_log(config.get('LOG_DIR'))
-    if last_log:
-        report_path = find_report_path(config.get('REPORT_DIR'),
-                                       lastdate)
-        if report_path:
-            logging.info('Reading and parsing log')
-            log_lines = read_log(last_log, config.get['ERROR_LIMIT'])
-            logging.info('Making report table')
-            res_table = stat_calc(log_lines, config.get('REPORT_SIZE'))
-            logging.info('Writing report to ' + report_path)
-            if config.get('TEMPLATE_PATH'):
-                write_report(report_path, res_table, config['TEMPLATE_PATH'])
-            else:
-                write_report(report_path, res_table, os.path.join(SCRIPT_PATH, 'report.html'))
-            logging.info('Parsing complete successfully')
-        else:
-            logging.debug('Results is up to date')
-    else:
-        logging.debug('No correct log in direcotry')
+    last_log, last_date = find_last_log(config.get('LOG_DIR'))
+    if not last_log:
+        logging.debug('No correct log in directory')
+        return
+    report_path = find_report_path(config.get('REPORT_DIR'),
+                                   last_date)
+    if not report_path:
+        logging.debug('Results is up to date')
+        return
+    logging.info('Reading and parsing log')
+    log_lines = read_log(last_log, config.get['ERROR_LIMIT'])
+    logging.info('Making report table')
+    res_table = stat_calc(log_lines, config.get('REPORT_SIZE'))
+    logging.info('Writing report to ' + report_path)
+    if not config.get('TEMPLATE_PATH'):
+        config['TEMPLATE_PATH'] = os.path.join(SCRIPT_PATH, 'report.html')
+    write_report(report_path, res_table, config['TEMPLATE_PATH'])
+    logging.info('Parsing complete successfully')
 
 
 if __name__ == "__main__":

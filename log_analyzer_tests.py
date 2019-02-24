@@ -40,10 +40,10 @@ class LogParserTestCase(unittest.TestCase):
         f2.close()
         f3.close()
         self.assertEqual(find_last_log(self.config["LOG_DIR"]),
-                         (test_log_path_2, datetime.datetime(2018, 6, 30, 0, 0)))
+                         (test_log_path_2, datetime.date(2018, 6, 30)))
         os.remove(test_log_path_2)
         self.assertEqual(find_last_log(self.config["LOG_DIR"]),
-                         (test_log_path_1, datetime.datetime(2017, 6, 30, 0, 0)))
+                         (test_log_path_1, datetime.date(2017, 6, 30)))
         os.remove(test_log_path_1)
         os.remove(test_log_path_3)
 
@@ -51,7 +51,7 @@ class LogParserTestCase(unittest.TestCase):
         test_result_path_1 = self.config["REPORT_DIR"] +\
                              '\\report-2017.06.30.html'
         self.assertEqual(find_report_path(self.config["REPORT_DIR"],
-                                          datetime.datetime(2017, 6, 30, 0, 0)), test_result_path_1)
+                                          datetime.datetime(2017, 6, 30)), test_result_path_1)
 
     def test_median(self):
         test_list = [1, 5, 4, 3, 6]
